@@ -1,23 +1,31 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Sync Clockify to Project'
+description: 'Sync Clockify time entries to GitHub Projects'
+author: 'floholz'
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: 'heart'
-  color: 'red'
+  icon: 'clock'
+  color: 'orange'
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  project-url:
+    description: 'Url to the GitHub Project'
     required: true
-    default: '1000'
+  github-token:
+    description: 'GitHub personal access token with write access to the project'
+    required: true
+  clockify-workspace-id:
+    description: 'Clockify workspace id'
+    required: true
+  clockify-api-key:
+    description: 'Clockify API Key'
+    required: true
 
 # Define your outputs here.
 outputs:
-  time:
-    description: 'Your output description here'
+  times:
+    description: 'Time entries array'
 
 runs:
   using: node20

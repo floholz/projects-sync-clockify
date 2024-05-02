@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import { wait } from './wait'
+import ClockifyApi from './clockify/clockify'
 
 /**
  * The main function for the action.
@@ -7,18 +7,20 @@ import { wait } from './wait'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    const clockifyApiKey: string = core.getInput('clockify-api-key')
+    core.debug(`ClockifyApi key: ${clockifyApiKey}`)
+    const clockifyWorkspaceId: string = core.getInput('clockify-workspace-id')
+    core.debug(`ClockifyWorkspaceId: ${clockifyWorkspaceId}`)
+    const projectUrl: string = core.getInput('project-url')
+    core.debug(`GitHub Project URL: ${projectUrl}`)
+    const githubToken: string = core.getInput('github-token')
+    core.debug(`GitHub PAT: ${githubToken}`)
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    const clockifyApi = new ClockifyApi(clockifyApiKey, clockifyWorkspaceId)
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
-
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    const timeEntries = await clockifyApi.getTimeEntriesFromWeek()
+    core.debug(`Number of Time Entries: ${timeEntries.length}`)
+    core.setOutput('times', timeEntries)
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)

@@ -24920,6 +24920,86 @@ exports["default"] = _default;
 
 /***/ }),
 
+/***/ 4904:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+class ClockifyApi {
+    baseUrl = 'https://api.clockify.me/api/v1';
+    reportsUrl = 'https://reports.api.clockify.me/v1';
+    apiKey;
+    workspaceId;
+    constructor(apiKey, workspaceId) {
+        this.apiKey = apiKey;
+        this.workspaceId = workspaceId;
+    }
+    async getUsers() {
+        const response = await fetch(`${this.baseUrl}/workspaces/${this.workspaceId}/users`, {
+            method: 'GET',
+            headers: {
+                'x-api-key': this.apiKey,
+            },
+        });
+        const json = await response.json();
+        return json.body;
+    }
+    async getTimeEntriesFromWeek(refDate) {
+        const today = refDate ?? new Date();
+        today.setUTCHours(0);
+        today.setUTCMinutes(0);
+        today.setUTCSeconds(0);
+        today.setUTCMilliseconds(0);
+        const start = new Date(today); // last Monday
+        start.setUTCDate(today.getUTCDate() - ((today.getUTCDay() + 6) % 7));
+        const end = new Date(start); // next Monday
+        end.setUTCDate(start.getUTCDate() + 7);
+        const requestBody = {
+            dateRangeStart: start.toISOString(),
+            dateRangeEnd: end.toISOString(),
+            detailedFilter: {}, // needs to be present
+        };
+        const response = await fetch(`${this.reportsUrl}/workspaces/${this.workspaceId}/reports/detailed`, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                'x-api-key': this.apiKey,
+            },
+            body: JSON.stringify(requestBody),
+        });
+        const json = await response.json();
+        const detailedReportResponse = json;
+        return detailedReportResponse.timeentries.map(entry => {
+            return {
+                id: entry._id,
+                billable: entry.billable,
+                client: {
+                    id: entry.clientId,
+                    name: entry.clientName,
+                },
+                description: entry.description,
+                project: {
+                    id: entry.projectId,
+                    name: entry.projectName,
+                    color: entry.projectColor,
+                },
+                tags: entry.tags,
+                timeInterval: entry.timeInterval,
+                user: {
+                    id: entry.userId,
+                    name: entry.userName,
+                    email: entry.userEmail,
+                },
+            };
+        });
+    }
+}
+exports["default"] = ClockifyApi;
+
+
+/***/ }),
+
 /***/ 399:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -24948,25 +25028,31 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const wait_1 = __nccwpck_require__(5259);
+const clockify_1 = __importDefault(__nccwpck_require__(4904));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 async function run() {
     try {
-        const ms = core.getInput('milliseconds');
-        // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-        core.debug(`Waiting ${ms} milliseconds ...`);
-        // Log the current timestamp, wait, then log the new timestamp
-        core.debug(new Date().toTimeString());
-        await (0, wait_1.wait)(parseInt(ms, 10));
-        core.debug(new Date().toTimeString());
-        // Set outputs for other workflow steps to use
-        core.setOutput('time', new Date().toTimeString());
+        const clockifyApiKey = core.getInput('clockify-api-key');
+        core.debug(`ClockifyApi key: ${clockifyApiKey}`);
+        const clockifyWorkspaceId = core.getInput('clockify-workspace-id');
+        core.debug(`ClockifyWorkspaceId: ${clockifyWorkspaceId}`);
+        const projectUrl = core.getInput('project-url');
+        core.debug(`GitHub Project URL: ${projectUrl}`);
+        const githubToken = core.getInput('github-token');
+        core.debug(`GitHub PAT: ${githubToken}`);
+        const clockifyApi = new clockify_1.default(clockifyApiKey, clockifyWorkspaceId);
+        const timeEntries = await clockifyApi.getTimeEntriesFromWeek();
+        core.debug(`Number of Time Entries: ${timeEntries.length}`);
+        core.setOutput('times', timeEntries);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
@@ -24975,31 +25061,6 @@ async function run() {
     }
 }
 exports.run = run;
-
-
-/***/ }),
-
-/***/ 5259:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.wait = void 0;
-/**
- * Wait for a number of milliseconds.
- * @param milliseconds The number of milliseconds to wait.
- * @returns {Promise<string>} Resolves with 'done!' after the wait is over.
- */
-async function wait(milliseconds) {
-    return new Promise(resolve => {
-        if (isNaN(milliseconds)) {
-            throw new Error('milliseconds not a number');
-        }
-        setTimeout(() => resolve('done!'), milliseconds);
-    });
-}
-exports.wait = wait;
 
 
 /***/ }),
